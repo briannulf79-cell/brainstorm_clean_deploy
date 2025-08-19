@@ -154,5 +154,5 @@ The frontend communicates with the backend via REST API:
 
 ## 🤝 Support
 
-For support and questions, please refer to the main project documentation.
+For support and questions, please refer to the main project documentation. 
 
