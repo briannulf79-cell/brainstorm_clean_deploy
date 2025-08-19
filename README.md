@@ -67,5 +67,5 @@ For deployment help or questions, check the documentation in each folder.
 
 ---
 
-**Built with ❤️ for entrepreneurs and agencies who want to compete with industry leaders.**
+**Built with ❤️ for entrepreneurs and agencies who want to compete with industry leaders.** 
 
