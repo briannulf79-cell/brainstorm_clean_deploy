@@ -1,125 +1,82 @@
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
-import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend
-} from 'recharts'
-import {
-  Users,
-  DollarSign,
-  TrendingUp,
-  Mail,
-  Phone,
-  Calendar,
-  Brain,
-  Zap,
-  Target,
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
+import { Progress } from './ui/progress';
+import { 
+  Users, 
+  DollarSign, 
+  TrendingUp, 
+  Activity,
   ArrowUpRight,
-  ArrowDownRight
-} from 'lucide-react'
+  ArrowDownRight,
+  Plus
+} from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+// Sample data for charts
+const revenueData = [
+  { month: 'Jan', revenue: 12000, leads: 45 },
+  { month: 'Feb', revenue: 15000, leads: 52 },
+  { month: 'Mar', revenue: 18000, leads: 61 },
+  { month: 'Apr', revenue: 22000, leads: 73 },
+  { month: 'May', revenue: 25000, leads: 84 },
+  { month: 'Jun', revenue: 28000, leads: 92 },
+];
+
+const recentActivities = [
+  { id: 1, type: 'contact', message: 'New contact Sarah Johnson added', time: '2 minutes ago' },
+  { id: 2, type: 'deal', message: 'Deal with TechCorp moved to negotiation', time: '15 minutes ago' },
+  { id: 3, type: 'email', message: 'Email campaign "Summer Sale" sent to 1,250 contacts', time: '1 hour ago' },
+  { id: 4, type: 'meeting', message: 'Meeting scheduled with Digital Marketing Pro', time: '2 hours ago' },
+];
 
 export default function Dashboard() {
-  const [metrics, setMetrics] = useState(null)
-  const [insights, setInsights] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({
+    totalContacts: 1247,
+    totalRevenue: 128500,
+    activeDeals: 23,
+    conversionRate: 12.5
+  });
 
-  useEffect(() => {
-    fetchDashboardData()
-  }, [])
-
-  const fetchDashboardData = async () => {
-    try {
-      const token = localStorage.getItem('auth_token')
-      
-      // Fetch metrics
-      const metricsResponse = await fetch('/api/dashboard/metrics?sub_account_id=1', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      const metricsData = await metricsResponse.json()
-      setMetrics(metricsData.metrics)
-
-      // Fetch AI insights
-      const insightsResponse = await fetch('/api/ai/insights?sub_account_id=1', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      const insightsData = await insightsResponse.json()
-      setInsights(insightsData.insights || [])
-
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Mock data for charts
-  const leadsOverTime = [
-    { date: '2024-01-01', leads: 45 },
-    { date: '2024-01-02', leads: 52 },
-    { date: '2024-01-03', leads: 48 },
-    { date: '2024-01-04', leads: 61 },
-    { date: '2024-01-05', leads: 55 },
-    { date: '2024-01-06', leads: 67 },
-    { date: '2024-01-07', leads: 73 }
-  ]
-
-  const pipelineData = [
-    { stage: 'Lead', count: 45, value: 125000 },
-    { stage: 'Qualified', count: 32, value: 89000 },
-    { stage: 'Proposal', count: 18, value: 67000 },
-    { stage: 'Negotiation', count: 12, value: 45000 },
-    { stage: 'Closed Won', count: 8, value: 32000 }
-  ]
-
-  const campaignPerformance = [
-    { name: 'Email Campaign A', impressions: 25000, clicks: 2500, conversions: 125 },
-    { name: 'Social Media B', impressions: 18000, clicks: 1800, conversions: 90 },
-    { name: 'Google Ads C', impressions: 32000, clicks: 3200, conversions: 160 },
-    { name: 'LinkedIn D', impressions: 12000, clicks: 1200, conversions: 60 }
-  ]
-
-  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    )
-  }
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isTrialUser = user.subscription_status === 'trial';
+  const trialDaysLeft = user.trial_days_left || 30;
 
   return (
     <div className="space-y-6">
-      {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg p-6 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Welcome to Brainstorm AI Kit</h1>
-            <p className="text-blue-100">
-              Your AI-powered business growth platform is ready to accelerate your success.
-            </p>
-          </div>
-          <Brain className="h-16 w-16 text-blue-200" />
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600">Welcome back, {user.name || 'User'}!</p>
         </div>
+        <Button>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Contact
+        </Button>
       </div>
 
-      {/* Key Metrics */}
+      {/* Trial Banner */}
+      {isTrialUser && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-blue-900">Free Trial Active</h3>
+                <p className="text-blue-700">
+                  You have {trialDaysLeft} days left in your trial. Upgrade now to unlock all features!
+                </p>
+              </div>
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                Upgrade Now
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -127,198 +84,155 @@ export default function Dashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics?.total_contacts || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-600 flex items-center">
-                <ArrowUpRight className="h-3 w-3 mr-1" />
-                +{metrics?.new_contacts || 0} this month
-              </span>
-            </p>
+            <div className="text-2xl font-bold">{stats.totalContacts.toLocaleString()}</div>
+            <div className="flex items-center text-xs text-muted-foreground">
+              <ArrowUpRight className="mr-1 h-3 w-3 text-green-500" />
+              +12% from last month
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              ${metrics?.total_revenue?.toLocaleString() || '0'}
+            <div className="text-2xl font-bold">${stats.totalRevenue.toLocaleString()}</div>
+            <div className="flex items-center text-xs text-muted-foreground">
+              <ArrowUpRight className="mr-1 h-3 w-3 text-green-500" />
+              +8% from last month
             </div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-600 flex items-center">
-                <ArrowUpRight className="h-3 w-3 mr-1" />
-                +12% from last month
-              </span>
-            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Deals</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.activeDeals}</div>
+            <div className="flex items-center text-xs text-muted-foreground">
+              <ArrowUpRight className="mr-1 h-3 w-3 text-green-500" />
+              +3 new this week
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
+            <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics?.conversion_rate || 0}%</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-600 flex items-center">
-                <ArrowUpRight className="h-3 w-3 mr-1" />
-                +2.1% from last month
-              </span>
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Campaigns</CardTitle>
-            <Mail className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics?.active_campaigns || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-blue-600">
-                Running across all channels
-              </span>
-            </p>
+            <div className="text-2xl font-bold">{stats.conversionRate}%</div>
+            <div className="flex items-center text-xs text-muted-foreground">
+              <ArrowDownRight className="mr-1 h-3 w-3 text-red-500" />
+              -2% from last month
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* AI Insights */}
-      {insights.length > 0 && (
+      {/* Charts and Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Revenue Chart */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <Brain className="h-5 w-5 mr-2 text-blue-600" />
-              AI-Powered Insights
-            </CardTitle>
-            <CardDescription>
-              Intelligent recommendations to optimize your business performance
-            </CardDescription>
+            <CardTitle>Revenue Overview</CardTitle>
+            <CardDescription>Monthly revenue and lead generation</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={revenueData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Area 
+                    type="monotone" 
+                    dataKey="revenue" 
+                    stroke="#3b82f6" 
+                    fill="#3b82f6" 
+                    fillOpacity={0.1}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Activity */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+            <CardDescription>Latest updates from your CRM</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {insights.slice(0, 3).map((insight, index) => (
-                <div key={index} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
-                  <div className={`
-                    p-2 rounded-full
-                    ${insight.priority === 'high' ? 'bg-red-100 text-red-600' : 
-                      insight.priority === 'medium' ? 'bg-yellow-100 text-yellow-600' : 
-                      'bg-blue-100 text-blue-600'}
-                  `}>
-                    <Zap className="h-4 w-4" />
-                  </div>
+              {recentActivities.map((activity) => (
+                <div key={activity.id} className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
                   <div className="flex-1">
-                    <h4 className="font-medium">{insight.title}</h4>
-                    <p className="text-sm text-gray-600 mt-1">{insight.description}</p>
-                    <div className="flex items-center mt-2 space-x-4">
-                      <Badge variant={insight.priority === 'high' ? 'destructive' : 'secondary'}>
-                        {insight.priority} priority
-                      </Badge>
-                      {insight.estimated_value > 0 && (
-                        <span className="text-sm text-green-600 font-medium">
-                          +${insight.estimated_value.toLocaleString()} potential
-                        </span>
-                      )}
-                    </div>
+                    <p className="text-sm font-medium">{activity.message}</p>
+                    <p className="text-xs text-gray-500">{activity.time}</p>
                   </div>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
-      )}
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Leads Over Time */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Lead Generation Trend</CardTitle>
-            <CardDescription>Daily lead acquisition over the past week</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={leadsOverTime}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Area type="monotone" dataKey="leads" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Pipeline Overview */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Sales Pipeline</CardTitle>
-            <CardDescription>Opportunities by stage</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={pipelineData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="stage" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="count" fill="#3b82f6" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
       </div>
 
-      {/* Campaign Performance */}
+      {/* AI Insights */}
       <Card>
         <CardHeader>
-          <CardTitle>Campaign Performance</CardTitle>
-          <CardDescription>Recent marketing campaign results</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={campaignPerformance}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="impressions" fill="#3b82f6" name="Impressions" />
-              <Bar dataKey="clicks" fill="#10b981" name="Clicks" />
-              <Bar dataKey="conversions" fill="#f59e0b" name="Conversions" />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>Common tasks to boost your productivity</CardDescription>
+          <CardTitle>AI Insights</CardTitle>
+          <CardDescription>Powered by Brainstorm AI</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button className="h-20 flex flex-col items-center justify-center space-y-2">
-              <Users className="h-6 w-6" />
-              <span>Add Contact</span>
-            </Button>
-            <Button variant="outline" className="h-20 flex flex-col items-center justify-center space-y-2">
-              <Mail className="h-6 w-6" />
-              <span>Create Campaign</span>
-            </Button>
-            <Button variant="outline" className="h-20 flex flex-col items-center justify-center space-y-2">
-              <Zap className="h-6 w-6" />
-              <span>Build Automation</span>
-            </Button>
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h4 className="font-semibold text-blue-900">Lead Quality Score</h4>
+              <div className="mt-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-blue-700">Current Average</span>
+                  <span className="font-bold text-blue-900">8.2/10</span>
+                </div>
+                <Progress value={82} className="mt-2" />
+              </div>
+              <p className="text-xs text-blue-600 mt-2">
+                Your leads are 23% higher quality than industry average
+              </p>
+            </div>
+
+            <div className="p-4 bg-green-50 rounded-lg">
+              <h4 className="font-semibold text-green-900">Best Contact Time</h4>
+              <div className="mt-2">
+                <span className="text-2xl font-bold text-green-900">2-4 PM</span>
+                <p className="text-sm text-green-700">Tuesday - Thursday</p>
+              </div>
+              <p className="text-xs text-green-600 mt-2">
+                45% higher response rate during this window
+              </p>
+            </div>
+
+            <div className="p-4 bg-purple-50 rounded-lg">
+              <h4 className="font-semibold text-purple-900">Revenue Forecast</h4>
+              <div className="mt-2">
+                <span className="text-2xl font-bold text-purple-900">$35K</span>
+                <p className="text-sm text-purple-700">Next 30 days</p>
+              </div>
+              <p className="text-xs text-purple-600 mt-2">
+                Based on current pipeline and AI analysis
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 

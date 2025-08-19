@@ -1,33 +1,53 @@
-// API Configuration
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+// API Configuration for Brainstorm AI Kit
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-// Helper function to make API calls
-export const apiCall = async (endpoint, options = {}) => {
-  const url = `${API_BASE_URL}${endpoint}`
-  const token = localStorage.getItem('authToken')
+export const API_ENDPOINTS = {
+  // Authentication
+  LOGIN: `${API_BASE_URL}/api/auth/login`,
+  SIGNUP: `${API_BASE_URL}/api/auth/signup`,
+  DEMO: `${API_BASE_URL}/api/auth/demo`,
+  
+  // Contacts
+  CONTACTS: `${API_BASE_URL}/api/contacts`,
+  
+  // Health check
+  HEALTH: `${API_BASE_URL}/api/health`,
+};
+
+// API utility function
+export const apiCall = async (url, options = {}) => {
+  const token = localStorage.getItem('token');
   
   const defaultOptions = {
     headers: {
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` }),
-      ...options.headers
+    },
+  };
+
+  const mergedOptions = {
+    ...defaultOptions,
+    ...options,
+    headers: {
+      ...defaultOptions.headers,
+      ...options.headers,
+    },
+  };
+
+  try {
+    const response = await fetch(url, mergedOptions);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('API call failed:', error);
+    throw error;
   }
-  
-  const response = await fetch(url, { ...defaultOptions, ...options })
-  
-  if (response.status === 403) {
-    const data = await response.json()
-    if (data.trial_expired) {
-      // Handle trial expiration
-      throw new Error('TRIAL_EXPIRED')
-    }
-  }
-  
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`)
-  }
-  
-  return response.json()
-}
+};
+
+export default API_BASE_URL;
 
