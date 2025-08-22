@@ -2,6 +2,7 @@ import os
 from datetime import datetime, timedelta
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, Float
+import json # Import json at the top for consistency
 
 db = SQLAlchemy()
 
@@ -14,18 +15,18 @@ class User(db.Model):
     last_name = Column(String(100), nullable=False)
     password_hash = Column(String(255), nullable=False)
     agency_name = Column(String(255))
-    role = Column(String(50), default='user')  # user, admin
-    subscription_status = Column(String(50), default='trial')  # trial, active, expired, cancelled
-    trial_expires_at = Column(DateTime, nullable=False)
+    role = Column(String(50), default='user')
+    subscription_status = Column(String(50), default='trial')
+    
+    # THE FIX: Set the default value directly in the column definition.
+    # This ensures the value is present at the moment of creation.
+    trial_expires_at = Column(DateTime, nullable=False, default=lambda: datetime.utcnow() + timedelta(days=30))
+    
     subscription_expires_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    def __init__(self, **kwargs):
-        super(User, self).__init__(**kwargs)
-        # Set 30-day trial by default
-        if not self.trial_expires_at:
-            self.trial_expires_at = datetime.utcnow() + timedelta(days=30)
+    # The __init__ method is no longer needed as SQLAlchemy handles it.
     
     @property
     def is_trial_expired(self):
@@ -33,6 +34,9 @@ class User(db.Model):
     
     @property
     def is_subscription_active(self):
+        # Master users have permanent access
+        if self.role == 'master':
+            return True
         if self.subscription_status == 'trial':
             return not self.is_trial_expired
         elif self.subscription_status == 'active':
@@ -41,6 +45,8 @@ class User(db.Model):
     
     @property
     def days_remaining(self):
+        if self.role == 'master':
+            return 9999 # Master users have effectively infinite days
         if self.subscription_status == 'trial':
             delta = self.trial_expires_at - datetime.utcnow()
             return max(0, delta.days)
@@ -76,7 +82,7 @@ class Contact(db.Model):
     company = Column(String(255))
     source = Column(String(100))
     status = Column(String(50), default='active')
-    tags = Column(Text)  # JSON string of tags
+    tags = Column(Text)
     notes = Column(Text)
     lead_score = Column(Float, default=0.0)
     activities_count = Column(Integer, default=0)
@@ -91,7 +97,6 @@ class Contact(db.Model):
     def tags_list(self):
         if self.tags:
             try:
-                import json
                 return json.loads(self.tags)
             except:
                 return []
@@ -122,10 +127,10 @@ class Subscription(db.Model):
     
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, nullable=False)
-    plan_name = Column(String(100), nullable=False)  # starter, professional, enterprise, agency
+    plan_name = Column(String(100), nullable=False)
     plan_price = Column(Float, nullable=False)
-    billing_cycle = Column(String(20), default='monthly')  # monthly, yearly
-    status = Column(String(50), default='active')  # active, cancelled, expired
+    billing_cycle = Column(String(20), default='monthly')
+    status = Column(String(50), default='active')
     stripe_subscription_id = Column(String(255))
     current_period_start = Column(DateTime)
     current_period_end = Column(DateTime)
@@ -144,4 +149,3 @@ class Subscription(db.Model):
             'current_period_end': self.current_period_end.isoformat() if self.current_period_end else None,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
-
