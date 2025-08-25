@@ -143,6 +143,22 @@ def login():
     
     return jsonify({'error': 'Invalid credentials'}), 401
 
+@app.route('/api/auth/demo', methods=['POST'])
+def demo_login():
+    """Demo login endpoint for quick access"""
+    demo_user = User.query.filter_by(email='demo@brainstormaikit.com').first()
+    
+    if demo_user:
+        access_token = create_access_token(identity=demo_user.id)
+        return jsonify({
+            'success': True, 
+            'user': demo_user.to_dict(), 
+            'token': access_token,
+            'message': 'Welcome to the demo!'
+        })
+    else:
+        return jsonify({'error': 'Demo account not found'}), 404
+
 # All other endpoints (contacts, dashboard, etc.) will use @require_auth
 # and automatically work with the master account logic.
 

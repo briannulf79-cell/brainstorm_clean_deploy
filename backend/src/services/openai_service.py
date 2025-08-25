@@ -1,6 +1,5 @@
 import os
 import openai
-from openai import OpenAI
 import json
 import logging
 
@@ -16,8 +15,8 @@ class OpenAIService:
             self.enabled = False
         else:
             try:
-                # Initialize OpenAI client with just the API key
-                self.client = OpenAI(api_key=self.api_key)
+                # Use the old OpenAI API (v0.28.1)
+                openai.api_key = self.api_key
                 self.enabled = True
                 logger.info("OpenAI service initialized successfully")
             except Exception as e:
@@ -53,7 +52,7 @@ class OpenAIService:
             Respond with just a number between 0-100.
             """
             
-            response = self.client.chat.completions.create(
+            response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are an AI lead scoring assistant that provides accurate numerical lead scores."},
@@ -103,7 +102,7 @@ class OpenAIService:
             Respond in JSON format with "subject" and "content" fields.
             """
             
-            response = self.client.chat.completions.create(
+            response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are an expert email marketing copywriter who creates engaging, professional emails."},
@@ -148,7 +147,7 @@ class OpenAIService:
             Respond in JSON format with "sentiment" and "engagement_score" fields.
             """
             
-            response = self.client.chat.completions.create(
+            response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are an AI sentiment analysis assistant."},
@@ -199,7 +198,7 @@ class OpenAIService:
             Respond as a JSON array of strings.
             """
             
-            response = self.client.chat.completions.create(
+            response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are a CRM assistant that provides actionable follow-up recommendations."},
@@ -231,7 +230,7 @@ class OpenAIService:
             return False
 
         try:
-            response = self.client.chat.completions.create(
+            response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": "Test"}],
                 max_tokens=5
