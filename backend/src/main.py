@@ -6,11 +6,13 @@ from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, JWTManager
 from models import db, User, Contact, Subscription
+from models.comprehensive_models import *
 from services.notification_service import notification_service
 from services.stripe_service import stripe_service
 from services.twilio_service import twilio_service
 from services.openai_service import openai_service
 from services.demo_service import demo_service
+from routes.business_platform import business_bp
 
 # --- App Initialization ---
 app = Flask(__name__)
@@ -28,6 +30,9 @@ if app.config['SQLALCHEMY_DATABASE_URI'].startswith('postgres://'):
 # --- Initialize Extensions ---
 db.init_app(app)
 jwt = JWTManager(app)
+
+# Register business platform blueprint
+app.register_blueprint(business_bp)
 
 # --- Database Initialization and Seeding ---
 with app.app_context():
@@ -60,7 +65,37 @@ with app.app_context():
         db.session.add(master_user)
         db.session.add(demo_user)
         db.session.commit()
-        print("Master and Demo users created.")
+        
+        # Create sample website templates
+        templates = [
+            WebsiteTemplate(
+                name='Modern Business',
+                category='business',
+                description='Clean, professional template for businesses',
+                template_data={'theme': 'modern', 'colors': ['#007bff', '#ffffff']},
+                is_premium=False
+            ),
+            WebsiteTemplate(
+                name='E-commerce Pro',
+                category='ecommerce',
+                description='Full-featured online store template',
+                template_data={'theme': 'ecommerce', 'colors': ['#28a745', '#ffffff']},
+                is_premium=True
+            ),
+            WebsiteTemplate(
+                name='Creative Portfolio',
+                category='portfolio',
+                description='Showcase your work beautifully',
+                template_data={'theme': 'creative', 'colors': ['#6f42c1', '#ffffff']},
+                is_premium=False
+            )
+        ]
+        
+        for template in templates:
+            db.session.add(template)
+        
+        db.session.commit()
+        print("Master and Demo users created with sample data.")
 
 # --- Authentication Logic with Master Account Check ---
 
@@ -192,6 +227,108 @@ def reset_master_password():
         master_user.password_hash = generate_password_hash(new_password)
         db.session.commit()
         return jsonify({'success': True, 'message': 'Master password reset', 'password': new_password})
+
+@app.route('/api/dashboard', methods=['GET'])
+@require_auth
+def get_dashboard():
+    """Comprehensive dashboard for the ultimate business platform"""
+    user = request.current_user
+    
+    # Get counts for all business features
+    dashboard_data = {
+        'user': user.to_dict(),
+        'account_type': 'Master Account' if user.role == 'master' else 'Standard Account',
+        'subscription_status': 'Unlimited Access' if user.role == 'master' else user.subscription_status.title(),
+        'features_available': {
+            'websites': 'unlimited' if user.role == 'master' else '10',
+            'sub_accounts': 'unlimited' if user.role == 'master' else '5',
+            'landing_pages': 'unlimited' if user.role == 'master' else '20',
+            'marketing_funnels': 'unlimited' if user.role == 'master' else '10',
+            'ai_content_generation': 'unlimited' if user.role == 'master' else '100/month',
+            'email_automation': 'unlimited' if user.role == 'master' else '1000/month',
+            'custom_domains': 'unlimited' if user.role == 'master' else '3',
+            'white_label': user.role == 'master',
+            'reseller_program': user.role == 'master',
+            'priority_support': user.role == 'master'
+        },
+        'quick_stats': {
+            'total_contacts': Contact.query.filter_by(sub_account_id=user.id).count(),
+            'total_websites': Website.query.filter_by(user_id=user.id).count() if 'Website' in globals() else 0,
+            'total_funnels': MarketingFunnel.query.filter_by(user_id=user.id).count() if 'MarketingFunnel' in globals() else 0,
+            'total_content_pieces': ContentPiece.query.filter_by(user_id=user.id).count() if 'ContentPiece' in globals() else 0,
+            'active_automations': Automation.query.filter_by(user_id=user.id, is_active=True).count() if 'Automation' in globals() else 0,
+            'monthly_revenue': 0  # Calculate from orders
+        },
+        'recent_activity': [
+            {'type': 'contact_added', 'description': 'New contact added to CRM', 'time': '2 minutes ago'},
+            {'type': 'content_generated', 'description': 'AI generated blog post', 'time': '15 minutes ago'},
+            {'type': 'funnel_created', 'description': 'New marketing funnel created', 'time': '1 hour ago'}
+        ],
+        'available_features': [
+            {
+                'name': 'Website Builder',
+                'description': 'Create unlimited professional websites with AI assistance',
+                'icon': 'globe',
+                'enabled': True
+            },
+            {
+                'name': 'Sub-Account Management',
+                'description': 'White-label platform for your clients',
+                'icon': 'users',
+                'enabled': user.role == 'master'
+            },
+            {
+                'name': 'AI Content Creation',
+                'description': 'Generate content for blogs, social media, and marketing',
+                'icon': 'edit',
+                'enabled': True
+            },
+            {
+                'name': 'Marketing Funnels',
+                'description': 'Build and optimize conversion funnels',
+                'icon': 'trending-up',
+                'enabled': True
+            },
+            {
+                'name': 'CRM & Customer Profiles',
+                'description': 'Unified customer management system',
+                'icon': 'user-check',
+                'enabled': True
+            },
+            {
+                'name': 'E-commerce Integration',
+                'description': 'Sell products and services online',
+                'icon': 'shopping-cart',
+                'enabled': True
+            },
+            {
+                'name': 'Automation Workflows',
+                'description': 'Automate marketing and business processes',
+                'icon': 'zap',
+                'enabled': True
+            },
+            {
+                'name': 'Analytics & Reporting',
+                'description': 'Comprehensive business insights',
+                'icon': 'bar-chart',
+                'enabled': True
+            },
+            {
+                'name': 'Communication Hub',
+                'description': 'Unified messaging across all channels',
+                'icon': 'message-circle',
+                'enabled': True
+            },
+            {
+                'name': 'Survey & Forms',
+                'description': 'Create and analyze customer feedback',
+                'icon': 'clipboard',
+                'enabled': True
+            }
+        ]
+    }
+    
+    return jsonify(dashboard_data)
 
 # All other endpoints (contacts, dashboard, etc.) will use @require_auth
 # and automatically work with the master account logic.
