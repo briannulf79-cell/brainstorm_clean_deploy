@@ -10,7 +10,13 @@ import {
   Activity,
   ArrowUpRight,
   ArrowDownRight,
-  Plus
+  Plus,
+  Globe,
+  Zap,
+  BarChart,
+  MessageCircle,
+  ShoppingCart,
+  Crown
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -32,24 +38,84 @@ const recentActivities = [
 ];
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({
-    totalContacts: 1247,
-    totalRevenue: 128500,
-    activeDeals: 23,
-    conversionRate: 12.5
-  });
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isTrialUser = user.subscription_status === 'trial';
-  const trialDaysLeft = user.trial_days_left || 30;
+  const token = localStorage.getItem('token');
+  
+  // Fetch comprehensive dashboard data from backend
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/dashboard`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setDashboardData(data);
+        } else {
+          setError('Failed to load dashboard data');
+        }
+      } catch (err) {
+        setError('Network error loading dashboard');
+        console.error('Dashboard fetch error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (token) {
+      fetchDashboard();
+    }
+  }, [token]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
+
+  const isMasterAccount = dashboardData?.account_type === 'Master Account';
+  const isTrialUser = !isMasterAccount && user.subscription_status === 'trial';
+  const stats = dashboardData?.quick_stats || {};
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">Welcome back, {user.name || 'User'}!</p>
+          <div className="flex items-center space-x-3">
+            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+            {isMasterAccount && (
+              <Badge variant="secondary" className="bg-gold-100 text-gold-800 border-gold-300">
+                <Crown className="w-3 h-3 mr-1" />
+                Master Account
+              </Badge>
+            )}
+          </div>
+          <p className="text-gray-600">
+            Welcome back, {dashboardData?.user?.first_name || user.name || 'User'}! 
+            {isMasterAccount && ' You have unlimited access to all platform features.'}
+          </p>
         </div>
         <Button>
           <Plus className="mr-2 h-4 w-4" />
@@ -57,15 +123,35 @@ export default function Dashboard() {
         </Button>
       </div>
 
-      {/* Trial Banner */}
-      {isTrialUser && (
+      {/* Master Account Banner */}
+      {isMasterAccount ? (
+        <Card className="border-green-200 bg-gradient-to-r from-green-50 to-blue-50">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-green-900 flex items-center">
+                  <Crown className="w-5 h-5 mr-2 text-yellow-600" />
+                  Master Account - Unlimited Access
+                </h3>
+                <p className="text-green-700">
+                  You have full access to all business platform features including white-label solutions, 
+                  unlimited websites, AI content creation, and reseller capabilities.
+                </p>
+              </div>
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                Manage Sub-Accounts
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : isTrialUser && (
         <Card className="border-blue-200 bg-blue-50">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-semibold text-blue-900">Free Trial Active</h3>
                 <p className="text-blue-700">
-                  You have {trialDaysLeft} days left in your trial. Upgrade now to unlock all features!
+                  You have {dashboardData?.user?.days_remaining || 30} days left in your trial. Upgrade now to unlock all features!
                 </p>
               </div>
               <Button className="bg-blue-600 hover:bg-blue-700">
@@ -76,109 +162,181 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Comprehensive Business Platform Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
+            <CardTitle className="text-sm font-medium">Contacts</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalContacts.toLocaleString()}</div>
-            <div className="flex items-center text-xs text-muted-foreground">
-              <ArrowUpRight className="mr-1 h-3 w-3 text-green-500" />
-              +12% from last month
-            </div>
+            <div className="text-2xl font-bold">{stats.total_contacts || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              {isMasterAccount ? 'Unlimited' : 'Trial limit: 100'}
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Websites</CardTitle>
+            <Globe className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats.totalRevenue.toLocaleString()}</div>
-            <div className="flex items-center text-xs text-muted-foreground">
-              <ArrowUpRight className="mr-1 h-3 w-3 text-green-500" />
-              +8% from last month
-            </div>
+            <div className="text-2xl font-bold">{stats.total_websites || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              {isMasterAccount ? 'Unlimited' : 'Trial limit: 3'}
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Deals</CardTitle>
+            <CardTitle className="text-sm font-medium">Funnels</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.activeDeals}</div>
-            <div className="flex items-center text-xs text-muted-foreground">
-              <ArrowUpRight className="mr-1 h-3 w-3 text-green-500" />
-              +3 new this week
-            </div>
+            <div className="text-2xl font-bold">{stats.total_funnels || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              {isMasterAccount ? 'Unlimited' : 'Trial limit: 5'}
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">Content</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.conversionRate}%</div>
-            <div className="flex items-center text-xs text-muted-foreground">
-              <ArrowDownRight className="mr-1 h-3 w-3 text-red-500" />
-              -2% from last month
-            </div>
+            <div className="text-2xl font-bold">{stats.total_content_pieces || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              AI-generated pieces
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Automations</CardTitle>
+            <Zap className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.active_automations || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              Active workflows
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${stats.monthly_revenue || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              This month
+            </p>
           </CardContent>
         </Card>
       </div>
 
+      {/* Business Platform Features */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Ultimate Business Platform Features</CardTitle>
+          <CardDescription>Your all-in-one business solution - everything you need in one place</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {dashboardData?.available_features?.map((feature, index) => (
+              <Card key={index} className={`cursor-pointer transition-all hover:shadow-md ${
+                feature.enabled ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'
+              }`}>
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <div className={`p-2 rounded-lg ${
+                      feature.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      {feature.icon === 'globe' && <Globe className="w-5 h-5" />}
+                      {feature.icon === 'users' && <Users className="w-5 h-5" />}
+                      {feature.icon === 'edit' && <Activity className="w-5 h-5" />}
+                      {feature.icon === 'trending-up' && <TrendingUp className="w-5 h-5" />}
+                      {feature.icon === 'user-check' && <Users className="w-5 h-5" />}
+                      {feature.icon === 'shopping-cart' && <ShoppingCart className="w-5 h-5" />}
+                      {feature.icon === 'zap' && <Zap className="w-5 h-5" />}
+                      {feature.icon === 'bar-chart' && <BarChart className="w-5 h-5" />}
+                      {feature.icon === 'message-circle' && <MessageCircle className="w-5 h-5" />}
+                      {feature.icon === 'clipboard' && <Activity className="w-5 h-5" />}
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-sm">{feature.name}</h4>
+                      <p className="text-xs text-gray-600">{feature.description}</p>
+                      {feature.enabled && (
+                        <Badge variant="secondary" className="mt-1 text-xs">
+                          Active
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Charts and Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Revenue Overview</CardTitle>
-            <CardDescription>Monthly revenue and lead generation</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={revenueData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Area 
-                    type="monotone" 
-                    dataKey="revenue" 
-                    stroke="#3b82f6" 
-                    fill="#3b82f6" 
-                    fillOpacity={0.1}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Recent Activity */}
         <Card>
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest updates from your CRM</CardDescription>
+            <CardDescription>Latest updates from your business platform</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-start space-x-3">
+              {dashboardData?.recent_activity?.map((activity, index) => (
+                <div key={index} className="flex items-start space-x-3">
                   <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium">{activity.message}</p>
+                    <p className="text-sm font-medium">{activity.description}</p>
                     <p className="text-xs text-gray-500">{activity.time}</p>
                   </div>
+                </div>
+              )) || [
+                { description: 'Welcome to Brainstorm AI Kit!', time: 'Just now' },
+                { description: 'Your comprehensive business platform is ready', time: '1 minute ago' },
+                { description: 'All features have been activated', time: '2 minutes ago' }
+              ].map((activity, index) => (
+                <div key={index} className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{activity.description}</p>
+                    <p className="text-xs text-gray-500">{activity.time}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Feature Limits Overview */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Account Features</CardTitle>
+            <CardDescription>Your current plan capabilities</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {dashboardData?.features_available && Object.entries(dashboardData.features_available).map(([feature, limit]) => (
+                <div key={feature} className="flex items-center justify-between">
+                  <span className="text-sm font-medium capitalize">{feature.replace('_', ' ')}</span>
+                  <Badge variant={limit === 'unlimited' ? 'default' : 'secondary'}>
+                    {limit === true ? 'Available' : limit === false ? 'Not Available' : limit}
+                  </Badge>
                 </div>
               ))}
             </div>

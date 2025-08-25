@@ -21,13 +21,24 @@ import {
   Bell,
   LogOut,
   Menu,
-  X
+  X,
+  Globe,
+  FileText,
+  ShoppingCart,
+  Building,
+  Zap,
+  Crown
 } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Contacts', href: '/dashboard/contacts', icon: Users },
-  { name: 'Pipeline', href: '/dashboard/pipeline', icon: GitBranch },
+  { name: 'Websites', href: '/dashboard/websites', icon: Globe, master: false },
+  { name: 'Content', href: '/dashboard/content', icon: FileText, master: false },
+  { name: 'Funnels', href: '/dashboard/funnels', icon: GitBranch, master: false },
+  { name: 'E-commerce', href: '/dashboard/ecommerce', icon: ShoppingCart, master: false },
+  { name: 'Sub-Accounts', href: '/dashboard/sub-accounts', icon: Building, master: true },
+  { name: 'Automation', href: '/dashboard/automation', icon: Zap, master: false },
   { name: 'Messages', href: '/dashboard/messages', icon: MessageSquare },
   { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
@@ -41,14 +52,28 @@ export default function Layout() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const userInitials = user.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U';
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/');
+  const handleLogout = async () => {
+    try {
+      // Call logout endpoint
+      await fetch(`${import.meta.env.VITE_API_URL}/api/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      navigate('/');
+    }
   };
 
-  const isTrialUser = user.subscription_status === 'trial';
-  const trialDaysLeft = user.trial_days_left || 30;
+  const isMasterAccount = user.role === 'master';
+  const isTrialUser = !isMasterAccount && user.subscription_status === 'trial';
+  const trialDaysLeft = user.days_remaining || 30;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -82,8 +107,23 @@ export default function Layout() {
           </Button>
         </div>
 
-        {/* Trial Banner */}
-        {isTrialUser && (
+        {/* Account Status Banner */}
+        {isMasterAccount ? (
+          <div className="mx-4 mt-4 p-3 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-green-900 flex items-center">
+                  <Crown className="w-4 h-4 mr-1 text-yellow-600" />
+                  Master Account
+                </p>
+                <p className="text-xs text-green-700">Unlimited Access</p>
+              </div>
+              <Button size="sm" className="text-xs bg-blue-600 hover:bg-blue-700">
+                Manage
+              </Button>
+            </div>
+          </div>
+        ) : isTrialUser && (
           <div className="mx-4 mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
@@ -102,6 +142,10 @@ export default function Layout() {
           <ul className="space-y-2">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
+              const showItem = !item.master || (item.master && isMasterAccount);
+              
+              if (!showItem) return null;
+              
               return (
                 <li key={item.name}>
                   <Link
@@ -115,6 +159,9 @@ export default function Layout() {
                   >
                     <item.icon className="mr-3 h-5 w-5" />
                     {item.name}
+                    {item.master && (
+                      <Crown className="ml-auto h-3 w-3 text-yellow-600" />
+                    )}
                   </Link>
                 </li>
               );
