@@ -16,6 +16,7 @@ class OpenAIService:
             self.enabled = False
         else:
             try:
+                # Initialize OpenAI client with just the API key
                 self.client = OpenAI(api_key=self.api_key)
                 self.enabled = True
                 logger.info("OpenAI service initialized successfully")
