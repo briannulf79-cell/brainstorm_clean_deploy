@@ -382,7 +382,7 @@ def get_dashboard():
             },
             {
                 'name': 'CRM System',
-                'description': f'Manage {"unlimited" if is_unlimited else f"{feature_limits.get("contacts", 1000):,}"} contacts',
+                'description': f'Manage {"unlimited" if is_unlimited else str(feature_limits.get("contacts", 1000)) + " max"} contacts',
                 'icon': 'users',
                 'enabled': True,
                 'limit': feature_limits.get('contacts', 1000)
@@ -410,7 +410,7 @@ def get_dashboard():
             },
             {
                 'name': 'Communication Hub',
-                'description': f'{"Unlimited" if is_unlimited else f"{feature_limits.get("email_sends_per_month", 2000):,}"} emails/month',
+                'description': f'{"Unlimited" if is_unlimited else str(feature_limits.get("email_sends_per_month", 2000)) + " max"} emails/month',
                 'icon': 'message-circle',
                 'enabled': True
             },
