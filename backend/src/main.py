@@ -527,7 +527,6 @@ def get_dashboard():
                 'customer_satisfaction': '98.7%'
             }
         }
-    }
         
         return jsonify(dashboard_data)
         

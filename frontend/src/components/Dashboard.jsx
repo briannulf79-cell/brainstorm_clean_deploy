@@ -308,7 +308,7 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-            {(dashboardData?.available_features || []).map((feature, index) => (
+            {(dashboardData?.available_features || []).filter(feature => feature && typeof feature === 'object').map((feature, index) => (
               <Card key={index} className={`cursor-pointer transition-all hover:shadow-md ${
                 feature.enabled ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'
               }`}>
@@ -329,8 +329,8 @@ export default function Dashboard() {
                       {feature.icon === 'clipboard' && <Activity className="w-5 h-5" />}
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-sm">{feature.name}</h4>
-                      <p className="text-xs text-gray-600">{feature.description}</p>
+                      <h4 className="font-semibold text-sm">{feature.name || 'Feature'}</h4>
+                      <p className="text-xs text-gray-600">{feature.description || 'Available feature'}</p>
                       {feature.enabled && (
                         <Badge variant="secondary" className="mt-1 text-xs">
                           Active
@@ -355,27 +355,30 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {(dashboardData?.recent_activity || []).map((activity, index) => (
-                <div key={index} className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{activity.description}</p>
-                    <p className="text-xs text-gray-500">{activity.time}</p>
+              {(dashboardData?.recent_activity && Array.isArray(dashboardData.recent_activity) && dashboardData.recent_activity.length > 0) ? 
+                dashboardData.recent_activity.filter(activity => activity && typeof activity === 'object').map((activity, index) => (
+                  <div key={index} className="flex items-start space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{activity.description || 'Activity'}</p>
+                      <p className="text-xs text-gray-500">{activity.time || 'Recently'}</p>
+                    </div>
                   </div>
-                </div>
-              )) || [
-                { description: 'Welcome to Brainstorm AI Kit!', time: 'Just now' },
-                { description: 'Your comprehensive business platform is ready', time: '1 minute ago' },
-                { description: 'All features have been activated', time: '2 minutes ago' }
-              ].map((activity, index) => (
-                <div key={index} className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{activity.description}</p>
-                    <p className="text-xs text-gray-500">{activity.time}</p>
+                )) : 
+                [
+                  { description: 'Welcome to Brainstorm AI Kit!', time: 'Just now' },
+                  { description: 'Your comprehensive business platform is ready', time: '1 minute ago' },
+                  { description: 'All features have been activated', time: '2 minutes ago' }
+                ].map((activity, index) => (
+                  <div key={index} className="flex items-start space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{activity.description}</p>
+                      <p className="text-xs text-gray-500">{activity.time}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              }
             </div>
           </CardContent>
         </Card>
@@ -388,21 +391,23 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {dashboardData?.features_available && Object.entries(dashboardData.features_available).map(([feature, limit]) => (
-                <div key={feature} className="flex items-center justify-between">
-                  <span className="text-sm font-medium capitalize">{feature.replace(/_/g, ' ')}</span>
-                  <Badge variant={limit === 'unlimited' || limit === true ? 'default' : 'secondary'}>
-                    {limit === true ? 'Available' : 
-                     limit === false ? 'Not Available' : 
-                     limit === 'unlimited' ? 'Unlimited' :
-                     typeof limit === 'number' ? limit.toLocaleString() : limit}
-                  </Badge>
-                </div>
-              )) || (
-                <div className="text-center text-gray-500 py-4">
-                  <p>Feature information loading...</p>
-                </div>
-              )}
+              {(dashboardData?.features_available && typeof dashboardData.features_available === 'object') ? 
+                Object.entries(dashboardData.features_available).map(([feature, limit]) => (
+                  <div key={feature} className="flex items-center justify-between">
+                    <span className="text-sm font-medium capitalize">{(feature || '').replace(/_/g, ' ')}</span>
+                    <Badge variant={limit === 'unlimited' || limit === true ? 'default' : 'secondary'}>
+                      {limit === true ? 'Available' : 
+                       limit === false ? 'Not Available' : 
+                       limit === 'unlimited' ? 'Unlimited' :
+                       typeof limit === 'number' ? limit.toLocaleString() : (limit || 'N/A')}
+                    </Badge>
+                  </div>
+                )) : (
+                  <div className="text-center text-gray-500 py-4">
+                    <p>Feature information loading...</p>
+                  </div>
+                )
+              }
             </div>
           </CardContent>
         </Card>
