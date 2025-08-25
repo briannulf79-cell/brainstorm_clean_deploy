@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timedelta
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, Float
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, Float, JSON
 import json # Import json at the top for consistency
 
 db = SQLAlchemy()
@@ -17,12 +17,17 @@ class User(db.Model):
     agency_name = Column(String(255))
     role = Column(String(50), default='user')
     subscription_status = Column(String(50), default='trial')
+    subscription_tier = Column(String(50), default='starter')  # 'starter', 'professional', 'business', 'enterprise', 'white_label'
+    billing_cycle = Column(String(20), default='monthly')  # 'monthly', 'annually'
     
     # THE FIX: Set the default value directly in the column definition.
     # This ensures the value is present at the moment of creation.
     trial_expires_at = Column(DateTime, nullable=False, default=lambda: datetime.utcnow() + timedelta(days=30))
     
     subscription_expires_at = Column(DateTime)
+    stripe_customer_id = Column(String(255))
+    stripe_subscription_id = Column(String(255))
+    monthly_usage = Column(JSON, default=dict)  # Track usage for billing
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -55,7 +60,44 @@ class User(db.Model):
             return max(0, delta.days)
         return 0
     
+    def get_feature_limits(self):
+        """Get feature limits based on subscription tier"""
+        # Import here to avoid circular imports
+        try:
+            from models.subscription_models import get_user_feature_limits
+            return get_user_feature_limits(self.subscription_tier, self.role)
+        except ImportError:
+            # Fallback limits if subscription models not available
+            if self.role == 'master':
+                return {
+                    'contacts': 'unlimited',
+                    'websites': 'unlimited',
+                    'funnels': 'unlimited',
+                    'content_pieces_per_month': 'unlimited',
+                    'automations': 'unlimited',
+                    'email_sends_per_month': 'unlimited',
+                    'storage_gb': 'unlimited',
+                    'team_members': 'unlimited',
+                    'white_label': True,
+                    'sub_accounts': 'unlimited'
+                }
+            else:
+                return {
+                    'contacts': 1000,
+                    'websites': 3,
+                    'funnels': 5,
+                    'content_pieces_per_month': 50,
+                    'automations': 10,
+                    'email_sends_per_month': 2000,
+                    'storage_gb': 5,
+                    'team_members': 2,
+                    'white_label': False,
+                    'sub_accounts': 0
+                }
+    
     def to_dict(self):
+        feature_limits = self.get_feature_limits()
+        
         return {
             'id': self.id,
             'email': self.email,
@@ -64,9 +106,13 @@ class User(db.Model):
             'agency_name': self.agency_name,
             'role': self.role,
             'subscription_status': self.subscription_status,
+            'subscription_tier': self.subscription_tier,
+            'billing_cycle': self.billing_cycle,
             'is_trial_expired': self.is_trial_expired,
             'is_subscription_active': self.is_subscription_active,
             'days_remaining': self.days_remaining,
+            'feature_limits': feature_limits,
+            'monthly_usage': self.monthly_usage or {},
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 

@@ -27,22 +27,39 @@ import {
   ShoppingCart,
   Building,
   Zap,
-  Crown
+  Crown,
+  CreditCard
 } from 'lucide-react';
 
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Contacts', href: '/dashboard/contacts', icon: Users },
-  { name: 'Websites', href: '/dashboard/websites', icon: Globe, master: false },
-  { name: 'Content', href: '/dashboard/content', icon: FileText, master: false },
-  { name: 'Funnels', href: '/dashboard/funnels', icon: GitBranch, master: false },
-  { name: 'E-commerce', href: '/dashboard/ecommerce', icon: ShoppingCart, master: false },
-  { name: 'Sub-Accounts', href: '/dashboard/sub-accounts', icon: Building, master: true },
-  { name: 'Automation', href: '/dashboard/automation', icon: Zap, master: false },
-  { name: 'Messages', href: '/dashboard/messages', icon: MessageSquare },
-  { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
-  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
-];
+const getNavigation = (user) => {
+  const baseNavigation = [
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'Contacts', href: '/dashboard/contacts', icon: Users },
+    { name: 'Websites', href: '/dashboard/websites', icon: Globe },
+    { name: 'Content', href: '/dashboard/content', icon: FileText },
+    { name: 'Funnels', href: '/dashboard/funnels', icon: GitBranch },
+    { name: 'E-commerce', href: '/dashboard/ecommerce', icon: ShoppingCart },
+    { name: 'Automation', href: '/dashboard/automation', icon: Zap },
+    { name: 'Messages', href: '/dashboard/messages', icon: MessageSquare },
+    { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+    { name: 'Subscription Plans', href: '/dashboard/plans', icon: CreditCard, trial: true },
+  ];
+  
+  // Add white-label features for appropriate users
+  const hasWhiteLabelAccess = user?.role === 'master' || user?.subscription_tier === 'white_label';
+  if (hasWhiteLabelAccess) {
+    baseNavigation.push(
+      { name: 'Sub-Accounts', href: '/dashboard/sub-accounts', icon: Building, whiteLabelOnly: true },
+      { name: 'White Label Settings', href: '/dashboard/white-label', icon: Crown, whiteLabelOnly: true }
+    );
+  }
+  
+  baseNavigation.push(
+    { name: 'Settings', href: '/dashboard/settings', icon: Settings }
+  );
+  
+  return baseNavigation;
+};
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -72,8 +89,11 @@ export default function Layout() {
   };
 
   const isMasterAccount = user.role === 'master';
-  const isTrialUser = !isMasterAccount && user.subscription_status === 'trial';
+  const isWhiteLabelAccount = user.subscription_tier === 'white_label';
+  const isTrialUser = !isMasterAccount && !isWhiteLabelAccount && user.subscription_status === 'trial';
   const trialDaysLeft = user.days_remaining || 30;
+  
+  const navigation = getNavigation(user);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -123,16 +143,49 @@ export default function Layout() {
               </Button>
             </div>
           </div>
-        ) : isTrialUser && (
+        ) : isWhiteLabelAccount ? (
+          <div className="mx-4 mt-4 p-3 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-purple-900 flex items-center">
+                  <Crown className="w-4 h-4 mr-1 text-purple-600" />
+                  White Label Partner
+                </p>
+                <p className="text-xs text-purple-700">Reseller Access</p>
+              </div>
+              <Button size="sm" className="text-xs bg-purple-600 hover:bg-purple-700">
+                Branding
+              </Button>
+            </div>
+          </div>
+        ) : isTrialUser ? (
           <div className="mx-4 mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-blue-900">Free Trial</p>
                 <p className="text-xs text-blue-700">{trialDaysLeft} days left</p>
               </div>
-              <Button size="sm" className="text-xs">
-                Upgrade
-              </Button>
+              <Link to="/dashboard/plans">
+                <Button size="sm" className="text-xs">
+                  Upgrade
+                </Button>
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="mx-4 mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-green-900">
+                  {user?.subscription_tier?.replace('_', ' ')?.replace(/\b\w/g, l => l.toUpperCase()) || 'Active'} Plan
+                </p>
+                <p className="text-xs text-green-700">Subscription Active</p>
+              </div>
+              <Link to="/dashboard/plans">
+                <Button size="sm" className="text-xs bg-green-600 hover:bg-green-700">
+                  Manage
+                </Button>
+              </Link>
             </div>
           </div>
         )}
@@ -142,9 +195,9 @@ export default function Layout() {
           <ul className="space-y-2">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
-              const showItem = !item.master || (item.master && isMasterAccount);
               
-              if (!showItem) return null;
+              // Show trial badge for subscription plans if user is on trial
+              const showTrialBadge = item.trial && isTrialUser;
               
               return (
                 <li key={item.name}>
@@ -152,15 +205,22 @@ export default function Layout() {
                     to={item.href}
                     className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                       isActive
-                        ? 'bg-blue-100 text-blue-700'
+                        ? (item.whiteLabelOnly ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700')
                         : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                     }`}
                     onClick={() => setSidebarOpen(false)}
                   >
-                    <item.icon className="mr-3 h-5 w-5" />
+                    <item.icon className={`mr-3 h-5 w-5 ${
+                      item.whiteLabelOnly ? 'text-purple-600' : ''
+                    }`} />
                     {item.name}
-                    {item.master && (
+                    {item.whiteLabelOnly && (
                       <Crown className="ml-auto h-3 w-3 text-yellow-600" />
+                    )}
+                    {showTrialBadge && (
+                      <span className="ml-auto bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                        Trial
+                      </span>
                     )}
                   </Link>
                 </li>
@@ -230,8 +290,13 @@ export default function Layout() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <div className="px-2 py-1.5">
-                    <p className="text-sm font-medium">{user.name || 'User'}</p>
+                    <p className="text-sm font-medium">{user.name || user.first_name || 'User'}</p>
                     <p className="text-xs text-gray-500">{user.email}</p>
+                    <p className="text-xs text-gray-400">
+                      {isMasterAccount ? 'Master Account' :
+                       isWhiteLabelAccount ? 'White Label Partner' :
+                       user?.subscription_tier?.replace('_', ' ')?.replace(/\b\w/g, l => l.toUpperCase()) || 'Trial'}
+                    </p>
                   </div>
                   <DropdownMenuItem>
                     <Settings className="mr-2 h-4 w-4" />

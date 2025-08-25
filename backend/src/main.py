@@ -41,6 +41,15 @@ except ImportError as e:
     print(f"⚠️  Warning: Business platform routes not available: {e}")
     BUSINESS_ROUTES_AVAILABLE = False
 
+# Import subscription routes safely
+try:
+    from routes.subscription_routes import subscription_bp
+    SUBSCRIPTION_ROUTES_AVAILABLE = True
+    print("✅ Subscription routes loaded successfully")
+except ImportError as e:
+    print(f"⚠️  Warning: Subscription routes not available: {e}")
+    SUBSCRIPTION_ROUTES_AVAILABLE = False
+
 # --- App Initialization ---
 app = Flask(__name__)
 CORS(app) # Enable Cross-Origin Resource Sharing
@@ -64,6 +73,13 @@ if BUSINESS_ROUTES_AVAILABLE:
     print("✅ Business platform routes registered")
 else:
     print("⚠️  Business platform routes not registered - using basic features only")
+
+# Register subscription routes if available
+if SUBSCRIPTION_ROUTES_AVAILABLE:
+    app.register_blueprint(subscription_bp, url_prefix='/api/subscription')
+    print("✅ Subscription routes registered")
+else:
+    print("⚠️  Subscription routes not registered - using basic subscription only")
 
 # --- Database Initialization and Seeding ---
 with app.app_context():
@@ -271,23 +287,75 @@ def get_dashboard():
     """Comprehensive dashboard for the ultimate business platform"""
     user = request.current_user
     
+    # Get subscription information
+    subscription_data = None
+    feature_limits = {}
+    
+    if SUBSCRIPTION_ROUTES_AVAILABLE:
+        try:
+            from database import get_db
+            from services.subscription_service import get_subscription_service
+            
+            db = get_db()
+            service = get_subscription_service(db)
+            
+            # Initialize subscription plans if needed
+            service.initialize_default_plans()
+            
+            # Get user's subscription and feature summary
+            subscription_data = service.get_user_subscription(user.id)
+            feature_summary = service.get_user_feature_summary(user.id)
+            feature_limits = feature_summary.get('features', {})
+        except Exception as e:
+            print(f"Warning: Could not load subscription data: {e}")
+    
+    # Determine user tier and capabilities
+    if user.role == 'master':
+        account_type = 'Master Account'
+        subscription_status = 'Unlimited Access'
+        tier = 'master'
+    elif subscription_data:
+        account_type = subscription_data['plan']['name']
+        subscription_status = subscription_data['status'].title()
+        tier = subscription_data['plan']['tier']
+    else:
+        account_type = 'Free Trial'
+        subscription_status = 'Trial'
+        tier = 'trial'
+    
+    # Build features_available based on subscription
+    features_available = {}
+    if user.role == 'master':
+        features_available = {
+            'websites': 'unlimited',
+            'sub_accounts': 'unlimited',
+            'landing_pages': 'unlimited',
+            'marketing_funnels': 'unlimited',
+            'ai_content_generation': 'unlimited',
+            'email_automation': 'unlimited',
+            'custom_domains': 'unlimited',
+            'white_label': True,
+            'reseller_program': True,
+            'priority_support': True
+        }
+    else:
+        # Use subscription-based limits
+        for feature_name, data in feature_limits.items():
+            if data['unlimited']:
+                features_available[feature_name] = 'unlimited'
+            elif data['limit'] in [False, 0]:
+                features_available[feature_name] = False
+            else:
+                features_available[feature_name] = data['limit']
+    
     # Get counts for all business features
     dashboard_data = {
         'user': user.to_dict(),
-        'account_type': 'Master Account' if user.role == 'master' else 'Standard Account',
-        'subscription_status': 'Unlimited Access' if user.role == 'master' else user.subscription_status.title(),
-        'features_available': {
-            'websites': 'unlimited' if user.role == 'master' else '10',
-            'sub_accounts': 'unlimited' if user.role == 'master' else '5',
-            'landing_pages': 'unlimited' if user.role == 'master' else '20',
-            'marketing_funnels': 'unlimited' if user.role == 'master' else '10',
-            'ai_content_generation': 'unlimited' if user.role == 'master' else '100/month',
-            'email_automation': 'unlimited' if user.role == 'master' else '1000/month',
-            'custom_domains': 'unlimited' if user.role == 'master' else '3',
-            'white_label': user.role == 'master',
-            'reseller_program': user.role == 'master',
-            'priority_support': user.role == 'master'
-        },
+        'account_type': account_type,
+        'subscription_status': subscription_status,
+        'tier': tier,
+        'subscription_data': subscription_data,
+        'features_available': features_available,
         'quick_stats': {
             'total_contacts': Contact.query.filter_by(sub_account_id=user.id).count(),
             'total_websites': Website.query.filter_by(user_id=user.id).count() if COMPREHENSIVE_MODELS_AVAILABLE else 0,

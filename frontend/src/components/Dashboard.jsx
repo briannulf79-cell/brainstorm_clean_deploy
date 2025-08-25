@@ -77,26 +77,45 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your business platform...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="text-red-500 mb-4">
+            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Error</h3>
           <p className="text-red-600 mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()}>Retry</Button>
+          <Button onClick={() => window.location.reload()} className="bg-blue-600 hover:bg-blue-700">
+            Retry Loading
+          </Button>
         </div>
       </div>
     );
   }
 
   const isMasterAccount = dashboardData?.account_type === 'Master Account';
-  const isTrialUser = !isMasterAccount && user.subscription_status === 'trial';
-  const stats = dashboardData?.quick_stats || {};
+  const isWhiteLabelAccount = dashboardData?.account_type === 'White Label Partner';
+  const isTrialUser = !isMasterAccount && !isWhiteLabelAccount && (dashboardData?.subscription_info?.is_trial || user.subscription_status === 'trial');
+  const stats = dashboardData?.quick_stats || {
+    total_contacts: 0,
+    total_websites: 0,
+    total_funnels: 0,
+    total_content_pieces: 0,
+    active_automations: 0,
+    monthly_revenue: 0
+  };
 
   return (
     <div className="space-y-6">
@@ -123,7 +142,7 @@ export default function Dashboard() {
         </Button>
       </div>
 
-      {/* Master Account Banner */}
+      {/* Account Status Banner */}
       {isMasterAccount ? (
         <Card className="border-green-200 bg-gradient-to-r from-green-50 to-blue-50">
           <CardContent className="p-6">
@@ -144,18 +163,56 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
-      ) : isTrialUser && (
+      ) : isWhiteLabelAccount ? (
+        <Card className="border-purple-200 bg-gradient-to-r from-purple-50 to-blue-50">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-purple-900 flex items-center">
+                  <Crown className="w-5 h-5 mr-2 text-purple-600" />
+                  White Label Partner - Reseller Access
+                </h3>
+                <p className="text-purple-700">
+                  Complete white-label solution with unlimited capabilities. Create sub-accounts, 
+                  custom branding, and earn revenue through our reseller program.
+                </p>
+              </div>
+              <Button className="bg-purple-600 hover:bg-purple-700">
+                Manage Branding
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : isTrialUser ? (
         <Card className="border-blue-200 bg-blue-50">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-semibold text-blue-900">Free Trial Active</h3>
                 <p className="text-blue-700">
-                  You have {dashboardData?.user?.days_remaining || 30} days left in your trial. Upgrade now to unlock all features!
+                  You have {dashboardData?.subscription_info?.days_remaining || dashboardData?.user?.days_remaining || 30} days left in your trial. Upgrade now to unlock all features!
                 </p>
               </div>
               <Button className="bg-blue-600 hover:bg-blue-700">
                 Upgrade Now
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-green-200 bg-green-50">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-green-900">
+                  {dashboardData?.account_type || 'Active Plan'}
+                </h3>
+                <p className="text-green-700">
+                  Your subscription is active. Enjoy all the features available in your plan.
+                </p>
+              </div>
+              <Button className="bg-green-600 hover:bg-green-700">
+                View Plan Details
               </Button>
             </div>
           </CardContent>
@@ -172,7 +229,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{stats.total_contacts || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {isMasterAccount ? 'Unlimited' : 'Trial limit: 100'}
+              {(isMasterAccount || isWhiteLabelAccount) ? 'Unlimited' : 'Trial limit: 100'}
             </p>
           </CardContent>
         </Card>
@@ -185,7 +242,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{stats.total_websites || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {isMasterAccount ? 'Unlimited' : 'Trial limit: 3'}
+              {(isMasterAccount || isWhiteLabelAccount) ? 'Unlimited' : 'Trial limit: 3'}
             </p>
           </CardContent>
         </Card>
@@ -198,7 +255,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{stats.total_funnels || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {isMasterAccount ? 'Unlimited' : 'Trial limit: 5'}
+              {(isMasterAccount || isWhiteLabelAccount) ? 'Unlimited' : 'Trial limit: 5'}
             </p>
           </CardContent>
         </Card>
@@ -251,7 +308,7 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-            {dashboardData?.available_features?.map((feature, index) => (
+            {(dashboardData?.available_features || []).map((feature, index) => (
               <Card key={index} className={`cursor-pointer transition-all hover:shadow-md ${
                 feature.enabled ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'
               }`}>
@@ -298,7 +355,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {dashboardData?.recent_activity?.map((activity, index) => (
+              {(dashboardData?.recent_activity || []).map((activity, index) => (
                 <div key={index} className="flex items-start space-x-3">
                   <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
                   <div className="flex-1">
@@ -333,12 +390,19 @@ export default function Dashboard() {
             <div className="space-y-4">
               {dashboardData?.features_available && Object.entries(dashboardData.features_available).map(([feature, limit]) => (
                 <div key={feature} className="flex items-center justify-between">
-                  <span className="text-sm font-medium capitalize">{feature.replace('_', ' ')}</span>
-                  <Badge variant={limit === 'unlimited' ? 'default' : 'secondary'}>
-                    {limit === true ? 'Available' : limit === false ? 'Not Available' : limit}
+                  <span className="text-sm font-medium capitalize">{feature.replace(/_/g, ' ')}</span>
+                  <Badge variant={limit === 'unlimited' || limit === true ? 'default' : 'secondary'}>
+                    {limit === true ? 'Available' : 
+                     limit === false ? 'Not Available' : 
+                     limit === 'unlimited' ? 'Unlimited' :
+                     typeof limit === 'number' ? limit.toLocaleString() : limit}
                   </Badge>
                 </div>
-              ))}
+              )) || (
+                <div className="text-center text-gray-500 py-4">
+                  <p>Feature information loading...</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
