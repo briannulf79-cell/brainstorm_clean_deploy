@@ -6,13 +6,40 @@ from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, JWTManager
 from models import db, User, Contact, Subscription
-from models.comprehensive_models import *
 from services.notification_service import notification_service
 from services.stripe_service import stripe_service
 from services.twilio_service import twilio_service
 from services.openai_service import openai_service
 from services.demo_service import demo_service
-from routes.business_platform import business_bp
+
+# Import comprehensive models safely to avoid startup failures
+try:
+    from models.comprehensive_models import (
+        Website, WebsiteTemplate, SubAccount, ContentPiece, SocialMediaAccount,
+        MarketingFunnel, LandingPage, Survey, SurveyResponse, UnifiedCustomerProfile,
+        Communication, Product, Order, AnalyticsEvent, Automation, AutomationExecution
+    )
+    COMPREHENSIVE_MODELS_AVAILABLE = True
+    print("✅ Comprehensive business models loaded successfully")
+except ImportError as e:
+    print(f"⚠️  Warning: Comprehensive models not available: {e}")
+    COMPREHENSIVE_MODELS_AVAILABLE = False
+    # Create dummy classes to prevent NameError
+    class Website: pass
+    class WebsiteTemplate: pass
+    class SubAccount: pass
+    class ContentPiece: pass
+    class MarketingFunnel: pass
+    class Automation: pass
+
+# Import business platform routes safely
+try:
+    from routes.business_platform import business_bp
+    BUSINESS_ROUTES_AVAILABLE = True
+    print("✅ Business platform routes loaded successfully")
+except ImportError as e:
+    print(f"⚠️  Warning: Business platform routes not available: {e}")
+    BUSINESS_ROUTES_AVAILABLE = False
 
 # --- App Initialization ---
 app = Flask(__name__)
@@ -31,8 +58,12 @@ if app.config['SQLALCHEMY_DATABASE_URI'].startswith('postgres://'):
 db.init_app(app)
 jwt = JWTManager(app)
 
-# Register business platform blueprint
-app.register_blueprint(business_bp)
+# Register business platform blueprint if available
+if BUSINESS_ROUTES_AVAILABLE:
+    app.register_blueprint(business_bp)
+    print("✅ Business platform routes registered")
+else:
+    print("⚠️  Business platform routes not registered - using basic features only")
 
 # --- Database Initialization and Seeding ---
 with app.app_context():
@@ -66,36 +97,42 @@ with app.app_context():
         db.session.add(demo_user)
         db.session.commit()
         
-        # Create sample website templates
-        templates = [
-            WebsiteTemplate(
-                name='Modern Business',
-                category='business',
-                description='Clean, professional template for businesses',
-                template_data={'theme': 'modern', 'colors': ['#007bff', '#ffffff']},
-                is_premium=False
-            ),
-            WebsiteTemplate(
-                name='E-commerce Pro',
-                category='ecommerce',
-                description='Full-featured online store template',
-                template_data={'theme': 'ecommerce', 'colors': ['#28a745', '#ffffff']},
-                is_premium=True
-            ),
-            WebsiteTemplate(
-                name='Creative Portfolio',
-                category='portfolio',
-                description='Showcase your work beautifully',
-                template_data={'theme': 'creative', 'colors': ['#6f42c1', '#ffffff']},
-                is_premium=False
-            )
-        ]
-        
-        for template in templates:
-            db.session.add(template)
+        # Create sample website templates if comprehensive models available
+        if COMPREHENSIVE_MODELS_AVAILABLE:
+            try:
+                templates = [
+                    WebsiteTemplate(
+                        name='Modern Business',
+                        category='business',
+                        description='Clean, professional template for businesses',
+                        template_data={'theme': 'modern', 'colors': ['#007bff', '#ffffff']},
+                        is_premium=False
+                    ),
+                    WebsiteTemplate(
+                        name='E-commerce Pro',
+                        category='ecommerce',
+                        description='Full-featured online store template',
+                        template_data={'theme': 'ecommerce', 'colors': ['#28a745', '#ffffff']},
+                        is_premium=True
+                    ),
+                    WebsiteTemplate(
+                        name='Creative Portfolio',
+                        category='portfolio',
+                        description='Showcase your work beautifully',
+                        template_data={'theme': 'creative', 'colors': ['#6f42c1', '#ffffff']},
+                        is_premium=False
+                    )
+                ]
+                
+                for template in templates:
+                    db.session.add(template)
+                
+                print("Sample website templates created")
+            except Exception as e:
+                print(f"Warning: Could not create sample templates: {e}")
         
         db.session.commit()
-        print("Master and Demo users created with sample data.")
+        print("Master and Demo users created successfully.")
 
 # --- Authentication Logic with Master Account Check ---
 
@@ -253,10 +290,10 @@ def get_dashboard():
         },
         'quick_stats': {
             'total_contacts': Contact.query.filter_by(sub_account_id=user.id).count(),
-            'total_websites': Website.query.filter_by(user_id=user.id).count() if 'Website' in globals() else 0,
-            'total_funnels': MarketingFunnel.query.filter_by(user_id=user.id).count() if 'MarketingFunnel' in globals() else 0,
-            'total_content_pieces': ContentPiece.query.filter_by(user_id=user.id).count() if 'ContentPiece' in globals() else 0,
-            'active_automations': Automation.query.filter_by(user_id=user.id, is_active=True).count() if 'Automation' in globals() else 0,
+            'total_websites': Website.query.filter_by(user_id=user.id).count() if COMPREHENSIVE_MODELS_AVAILABLE else 0,
+            'total_funnels': MarketingFunnel.query.filter_by(user_id=user.id).count() if COMPREHENSIVE_MODELS_AVAILABLE else 0,
+            'total_content_pieces': ContentPiece.query.filter_by(user_id=user.id).count() if COMPREHENSIVE_MODELS_AVAILABLE else 0,
+            'active_automations': Automation.query.filter_by(user_id=user.id, is_active=True).count() if COMPREHENSIVE_MODELS_AVAILABLE else 0,
             'monthly_revenue': 0  # Calculate from orders
         },
         'recent_activity': [
