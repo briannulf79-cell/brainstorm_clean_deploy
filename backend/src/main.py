@@ -159,6 +159,40 @@ def demo_login():
     else:
         return jsonify({'error': 'Demo account not found'}), 404
 
+@app.route('/api/auth/logout', methods=['POST'])
+def logout():
+    return jsonify({'success': True, 'message': 'Logged out successfully'})
+
+@app.route('/api/auth/me', methods=['GET'])
+@require_auth
+def get_current_user():
+    return jsonify({'user': request.current_user.to_dict()})
+
+@app.route('/api/auth/reset-master-password', methods=['POST'])
+def reset_master_password():
+    """Reset master account password - for development/troubleshooting"""
+    data = request.get_json()
+    new_password = data.get('new_password', 'YourSecureMasterPassword123!')
+    
+    master_user = User.query.filter_by(email='brian.nulf79@gmail.com').first()
+    if not master_user:
+        # Create master user if it doesn't exist
+        master_user = User(
+            email='brian.nulf79@gmail.com',
+            first_name='Brian',
+            last_name='Nulf',
+            password_hash=generate_password_hash(new_password),
+            agency_name='Brainstorm AI Kit HQ',
+            role='master'
+        )
+        db.session.add(master_user)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Master account created', 'password': new_password})
+    else:
+        master_user.password_hash = generate_password_hash(new_password)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Master password reset', 'password': new_password})
+
 # All other endpoints (contacts, dashboard, etc.) will use @require_auth
 # and automatically work with the master account logic.
 
