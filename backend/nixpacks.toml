@@ -8,4 +8,4 @@ cmds = ["pip install -r requirements.txt"]
 cmds = ["echo 'Build complete'"]
 
 [start]
-cmd = "gunicorn --bind 0.0.0.0:$PORT test_wsgi:application"
+cmd = "gunicorn --bind 0.0.0.0:$PORT wsgi:app"
